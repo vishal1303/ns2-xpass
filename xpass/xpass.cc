@@ -177,14 +177,14 @@ void XPassAgent::recv_credit_request(Packet *pkt) {
         lalpha = alpha_;
       } else {
         lalpha = alpha_ * xph->sendbuffer_ / 40.0;
-      } 
+      }
       cur_credit_rate_ = (int)(lalpha * max_credit_rate_);
       fst_ = xph->credit_sent_time();
       // need to start to send credits.
       send_credit();
-        
+
       // XPASS_SEND_CLOSED -> XPASS_SEND_CREDIT_REQUEST_RECEIVED
-      credit_send_state_ = XPASS_SEND_CREDIT_SENDING;     
+      credit_send_state_ = XPASS_SEND_CREDIT_SENDING;
       break;
   }
 }
@@ -203,7 +203,7 @@ void XPassAgent::recv_credit(Packet *pkt) {
       if (datalen_remaining() > 0) {
         send(construct_data(pkt), 0);
       }
- 
+
       if (datalen_remaining() == 0) {
         if (credit_stop_timer_.status() != TIMER_IDLE) {
           fprintf(stderr, "Error: CreditStopTimer seems to be scheduled more than once.\n");
@@ -290,7 +290,10 @@ void XPassAgent::recv_credit_stop(Packet *pkt) {
 void XPassAgent::handle_fct() {
   FILE *fct_out = fopen("outputs/fct.out","a");
 
-  fprintf(fct_out, "%d,%ld,%.10lf\n", fid_, recv_next_-1, fct_);
+  //printf("%d,%ld,%.18lf,%.18lf,%.18lf\n", fid_, recv_next_-1, (double)fst_, (double)fct_,
+  //        ((((double)recv_next_-1.0)*8.0)/(fct_*1e9)));
+  fprintf(fct_out, "%d,%ld,%.18lf,%.18lf,%.18lf\n", fid_, recv_next_-1, (double)fst_, (double)fct_,
+          ((((double)recv_next_-1.0)*8.0)/(fct_*1e9)));
   fclose(fct_out);
   credit_send_state_ = XPASS_SEND_CLOSED;
 }
@@ -486,6 +489,7 @@ void XPassAgent::send_credit() {
   send(construct_credit(), 0);
 
   // calculate delay for next credit transmission.
+  assert(cur_credit_rate_ != 0);
   delay = avg_credit_size / cur_credit_rate_;
   // add jitter
   if (max_jitter_ > min_jitter_) {
@@ -575,15 +579,20 @@ void XPassAgent::credit_feedback_control() {
   }
 
   int old_rate = cur_credit_rate_;
+  assert(credit_total_ != 0);
   double loss_rate = credit_dropped_/(double)credit_total_;
+  assert(max_credit_rate_ != 0);
   double target_loss = (1.0 - cur_credit_rate_/(double)max_credit_rate_) * target_loss_scaling_;
+  assert(rtt_ != 0);
   int min_rate = (int)(avg_credit_size() / rtt_);
 
   if (loss_rate > target_loss) {
     // congestion has been detected!
     if (loss_rate >= 1.0) {
+      assert(rtt_ != 0);
       cur_credit_rate_ = (int)(avg_credit_size() / rtt_);
     } else {
+      assert((now() - last_credit_rate_update_) != 0);
       cur_credit_rate_ = (int)(avg_credit_size()*(credit_total_ - credit_dropped_)
                          / (now() - last_credit_rate_update_)
                          * (1.0+target_loss));
