@@ -57,7 +57,9 @@ def main():
             flow_size = int(tokens[1])
             oracle_fct = get_oracle_fct(src_addr, dst_addr, flow_size)
             slowdown = (float(tokens[3])*1e9) / oracle_fct
-            assert(slowdown >= 1.0)
+            #assert(slowdown >= 1.0)
+            if (slowdown < 1.0):
+                f1.write("Problem -- ")
             f1.write(tokens[0]+","+str(src_addr)+","+str(dst_addr)+","+tokens[1]+","+tokens[2]+","+tokens[3]+","+str(slowdown)+","+tokens[4])
     f.close()
     f1.close()

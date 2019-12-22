@@ -3,18 +3,18 @@ set ns [new Simulator]
 #
 # Flow configurations
 #
-set numFlow 100000
-set workload "cachefollower" ;# cachefollower, mining, search, webserver
-set linkLoad 0.6 ;# ranges from 0.0 to 1.0
+set numFlow 1
+set workload [lindex $argv 0] ;# cachefollower, mining, search, webserver, datamining, dctcp, aditya
+set linkLoad [lindex $argv 1] ;# ranges from 0.0 to 1.0
 
 #
 # Toplogy configurations
 #
-set linkRate 10 ;# Gb
+set linkRate [lindex $argv 2] ;# Gb
 set hostDelay 0.000001 ;# secs
-set linkDelayHostTor 0.000004 ;# secs
-set linkDelayTorAggr 0.000004 ;# secs
-set linkDelayAggrCore 0.000004 ;# secs
+set linkDelayHostTor [expr [lindex $argv 3]/1e9] ;# secs
+set linkDelayTorAggr [expr [lindex $argv 3]/1e9] ;# secs
+set linkDelayAggrCore [expr [lindex $argv 3]/1e9] ;# secs
 set dataBufferHost [expr 1000*1538] ;# bytes / port
 set dataBufferFromTorToAggr [expr 250*1538] ;# bytes / port
 set dataBufferFromAggrToCore [expr 250*1538] ;# bytes / port
@@ -68,7 +68,7 @@ proc finish {} {
   global ns nt flowfile
   $ns flush-trace
   close $nt
-  close $flowfile
+  #close $flowfile
   puts "Simulation terminated successfully."
   exit 0
 }
@@ -112,6 +112,15 @@ if {[string compare $workload "mining"] == 0} {
 } elseif {[string compare $workload "webserver"] == 0} {
   set workloadPath "workloads/workload_webserver.tcl"
   set avgFlowSize 63735
+} elseif {[string compare $workload "dctcp"] == 0} {
+  set workloadPath "workloads/workload_dctcp.tcl"
+  set avgFlowSize 988530
+} elseif {[string compare $workload "aditya"] == 0} {
+  set workloadPath "workloads/workload_aditya.tcl"
+  set avgFlowSize 124500
+} elseif {[string compare $workload "datamining"] == 0} {
+  set workloadPath "workloads/workload_datamining.tcl"
+  set avgFlowSize 1149000
 } else {
   puts "Invalid workload: $workload"
   exit 0
@@ -268,6 +277,9 @@ proc sendBytes {} {
 
   if {$fidx < $numFlow} {
     $ns at $nextTime "sendBytes"
+  } elseif {$fidx == $numFlow} {
+      $ns flush-trace
+      close $flowfile
   }
 }
 

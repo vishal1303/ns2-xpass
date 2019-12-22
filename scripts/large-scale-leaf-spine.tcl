@@ -3,7 +3,7 @@ set ns [new Simulator]
 #
 # Flow configurations
 #
-set numFlow 10
+set numFlow 100000
 set workload [lindex $argv 0] ;# cachefollower, mining, search, webserver, datamining, dctcp, aditya
 set linkLoad [lindex $argv 1] ;# ranges from 0.0 to 1.0
 
@@ -14,10 +14,10 @@ set linkRate [lindex $argv 2] ;# Gb
 set hostDelay 0.000000 ;# secs
 set linkDelayHostTor [expr [lindex $argv 3]/1e9] ;# secs
 set linkDelayTorAggr [expr [lindex $argv 3]/1e9] ;# secs
-set dataBufferHost [expr 1000*1538] ;# bytes / port
-set dataBufferFromTorToAggr [expr 250*1538] ;# bytes / port
-set dataBufferFromAggrToTor [expr 250*1538] ;# bytes / port
-set dataBufferFromTorToHost [expr 250*1538] ;# bytes / port
+set dataBufferHost [expr (1000*1538)*(ceil(double($linkRate)/10.0))] ;# bytes / port
+set dataBufferFromTorToAggr [expr 250*1538*(ceil(double($linkRate)/10.0))] ;# bytes / port
+set dataBufferFromAggrToTor [expr 250*1538*(ceil(double($linkRate)/10.0))] ;# bytes / port
+set dataBufferFromTorToHost [expr 250*1538*(ceil(double($linkRate)/10.0))] ;# bytes / port
 
 set numAggr [lindex $argv 4] ;# number of aggregator switches
 set numTor [lindex $argv 5] ;# number of ToR switches
@@ -64,7 +64,7 @@ proc finish {} {
   global ns nt flowfile
   $ns flush-trace
   close $nt
-  close $flowfile
+  #close $flowfile
   puts "Simulation terminated successfully."
   exit 0
 }
