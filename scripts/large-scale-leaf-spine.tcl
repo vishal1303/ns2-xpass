@@ -3,7 +3,7 @@ set ns [new Simulator]
 #
 # Flow configurations
 #
-set numFlow 10
+set numFlow 1000000
 set workload [lindex $argv 0] ;# cachefollower, mining, search, webserver, datamining, dctcp, aditya
 set linkLoad [lindex $argv 1] ;# ranges from 0.0 to 1.0
 
