@@ -3,7 +3,7 @@ set ns [new Simulator]
 #
 # Flow configurations
 #
-set numFlow 100000
+set numFlow 10
 set workload [lindex $argv 0] ;# cachefollower, mining, search, webserver, datamining, dctcp, aditya
 set linkLoad [lindex $argv 1] ;# ranges from 0.0 to 1.0
 
@@ -204,59 +204,80 @@ for {set i 0} {$i < $numNode} {incr i} {
 }
 
 puts "Creating agents and flows..."
-for {set i 0} {$i < $numFlow} {incr i} {
-  set src_nodeid [expr int([$randomSrcNodeId value])]
-  set dst_nodeid [expr int([$randomDstNodeId value])]
+set fp [open [lindex $argv 7] r]
+set file_data [read $fp]
+set data [split $file_data "\n"]
+set linecount 0
+foreach line $data {
+    set token [split $line ","]
+    set count 0
+    set id 0
+    set src 0
+    set dst 0
+    set size 0
+    set starttime 0
+    foreach t $token {
+        if {$count == 0} {
+            set id $t
+        } elseif {$count == 1} {
+            set src $t
+        } elseif {$count == 2} {
+            set dst $t
+        } elseif {$count == 3} {
+            set size $t
+        } elseif {$count == 4} {
+            set starttime $t
+        }
+        set count [expr $count+1]
 
-  while {$src_nodeid == $dst_nodeid} {
-#    set src_nodeid [expr int([$randomSrcNodeId value])]
-    set dst_nodeid [expr int([$randomDstNodeId value])]
-  }
+        set sender($id) [new Agent/XPass]
+        set receiver($id) [new Agent/XPass]
 
-  set sender($i) [new Agent/XPass]
-  set receiver($i) [new Agent/XPass]
+        $sender($id) set fid_ $id
+        $sender($id) set host_id_ $src
+        $receiver($id) set fid_ $id
+        $receiver($id) set host_id_ $dst
 
-  $sender($i) set fid_ $i
-  $sender($i) set host_id_ $src_nodeid
-  $receiver($i) set fid_ $i
-  $receiver($i) set host_id_ $dst_nodeid
+        $ns attach-agent $dcNode($src) $sender($id)
+        $ns attach-agent $dcNode($dst) $receiver($id)
 
-  $ns attach-agent $dcNode($src_nodeid) $sender($i)
-  $ns attach-agent $dcNode($dst_nodeid) $receiver($i)
+        $ns connect $sender($id) $receiver($id)
 
-  $ns connect $sender($i) $receiver($i)
+        set srcIndex($id) $src
+        set dstIndex($id) $dst
+        set flowsize($id) $size
+        set flowstart($id) $starttime
 
-  $ns at $simEndTime "$sender($i) close"
-  $ns at $simEndTime "$receiver($i) close"
+        $ns at $simEndTime "$sender($id) close"
+        $ns at $simEndTime "$receiver($id) close"
+    }
 
-  set srcIndex($i) $src_nodeid
-  set dstIndex($i) $dst_nodeid
+    #puts "$id $src $dst $size $starttime"
+
+    set linecount [expr $linecount+1]
+    if {$linecount == $numFlow} {
+    #    set simEndTime [expr $simStartTime+$starttime]
+        break
+    }
 }
+
+close $fp
 
 set nextTime $simStartTime
 set fidx 0
 
 proc sendBytes {} {
-  global ns random_flow_size nextTime sender fidx randomFlowSize randomFlowInterval numFlow srcIndex dstIndex flowfile
-  while {1} {
-    set fsize [expr ceil([expr [$randomFlowSize value]])]
-    if {$fsize > 0} {
-      break;
-    }
-  }
+  global ns simStartTime nextTime sender fidx numFlow srcIndex dstIndex flowsize flowstart flowfile randomFlowInterval
 
-  puts $flowfile "$nextTime $fidx $srcIndex($fidx) $dstIndex($fidx) $fsize"
-  #puts "$nextTime $fidx $srcIndex($fidx) $dstIndex($fidx) $fsize"
-  $ns at $nextTime "$sender($fidx) advance-bytes $fsize"
+  puts $flowfile "$nextTime $fidx $srcIndex($fidx) $dstIndex($fidx) $flowsize($fidx)"
+  #puts "$fidx $srcIndex($fidx) $dstIndex($fidx) $flowsize($fidx) $nextTime"
+  $ns at $nextTime "$sender($fidx) advance-bytes $flowsize($fidx)"
 
-  set nextTime [expr $nextTime+[$randomFlowInterval value]]
   set fidx [expr $fidx+1]
 
   if {$fidx < $numFlow} {
+    set nextTime [expr $simStartTime+$flowstart($fidx)]
     $ns at $nextTime "sendBytes"
-  } elseif {$fidx == $numFlow} {
-      $ns flush-trace
-      close $flowfile
   }
 }
 
